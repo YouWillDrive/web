@@ -75,6 +75,25 @@ export function useCalendarEvents(year?: number, month?: number) {
   return useApiCall(() => api.calendar.getEvents(year, month), [year, month]);
 }
 
+// Hook for instructor cadets with manual refetch capability
+export function useInstructorCadets(instructorId: string) {
+  const [shouldRefetch, setShouldRefetch] = useState(0);
+
+  const result = useApiCall(
+    () => api.instructors.getCadets(instructorId),
+    [instructorId, shouldRefetch],
+  );
+
+  const manualRefetch = useCallback(() => {
+    setShouldRefetch((prev) => prev + 1);
+  }, []);
+
+  return {
+    ...result,
+    refetch: manualRefetch,
+  };
+}
+
 // Hook for async operations with manual trigger
 export function useAsyncOperation<T, Args extends any[]>(
   operation: (...args: Args) => Promise<ApiResponse<T>>,
@@ -144,6 +163,18 @@ export function useDeleteUser() {
   return useAsyncOperation(api.users.delete);
 }
 
+export function useCreatePlan() {
+  return useAsyncOperation(api.plans.create);
+}
+
+export function useUpdatePlan() {
+  return useAsyncOperation(api.plans.update);
+}
+
+export function useDeletePlan() {
+  return useAsyncOperation(api.plans.delete);
+}
+
 // Hook for form submissions with validation
 export function useFormSubmission<T>(
   submitFn: (data: T) => Promise<ApiResponse<any>>,
@@ -188,4 +219,15 @@ export function useFormSubmission<T>(
   }, []);
 
   return { submit, isSubmitting, submitError, clearError };
+}
+
+export function useGetInstructorCars(instructorId: string) {
+  // Only execute the call if instructorId is provided
+  return useApiCall(
+    () =>
+      instructorId
+        ? api.instructors.getCars(instructorId)
+        : Promise.resolve({ success: true, data: [] }),
+    [instructorId],
+  );
 }

@@ -182,7 +182,9 @@ export function EventDetailsModal({
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <p className="font-medium">{formatParticipantName(event.cadet)}</p>
+              <p className="font-medium">
+                {formatParticipantName(event.cadet)}
+              </p>
               <Badge variant="outline" className="text-xs">
                 Курсант
               </Badge>

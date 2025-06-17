@@ -4,7 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand/logo";
-import { Home, Users, MessageSquare, Menu, Calendar } from "lucide-react";
+import {
+  Home,
+  Users,
+  MessageSquare,
+  Menu,
+  Calendar,
+  CreditCard,
+} from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -22,6 +29,7 @@ export function Navigation({ className }: NavigationProps) {
     { name: "Пользователи", href: "/users", icon: Users },
     { name: "Чаты", href: "/chats", icon: MessageSquare },
     { name: "Календарь", href: "/calendar", icon: Calendar },
+    { name: "Планы", href: "/plans", icon: CreditCard },
   ];
 
   const NavLink = ({

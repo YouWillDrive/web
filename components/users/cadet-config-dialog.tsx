@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search } from "lucide-react";
 import { api, Instructor, Plan } from "@/lib/api/client";
 import { Spinner } from "@/components/ui/spinner";
@@ -135,6 +135,14 @@ export function CadetConfigDialog({
     }
   }, [open]);
 
+  // Get the selected plan's practice hours
+  const selectedPlanHours = useMemo(() => {
+    const selectedPlan = paymentPlans.find(
+      (plan) => plan.id === formData.paymentPlan,
+    );
+    return selectedPlan?.practice_hours;
+  }, [formData.paymentPlan, paymentPlans]);
+
   const validateForm = (): boolean => {
     const newErrors: Partial<CadetConfigData> = {};
 
@@ -146,11 +154,18 @@ export function CadetConfigDialog({
       newErrors.instructorId = "Выберите инструктора";
     }
 
-    if (Number.parseInt(formData.spentHours) < 0) {
+    if (Number.parseFloat(formData.spentHours) < 0) {
       newErrors.spentHours = "Количество часов не может быть отрицательным";
     }
 
-    if (Number.parseInt(formData.bonusHours) < 0) {
+    if (
+      selectedPlanHours &&
+      Number.parseFloat(formData.spentHours) > selectedPlanHours
+    ) {
+      newErrors.spentHours = `Количество часов не может превышать ${selectedPlanHours}`;
+    }
+
+    if (Number.parseFloat(formData.bonusHours) < 0) {
       newErrors.bonusHours =
         "Количество бонусных часов не может быть отрицательным";
     }
@@ -324,16 +339,18 @@ export function CadetConfigDialog({
                     id="spentHours"
                     type="number"
                     min="0"
-                    max="200"
+                    max={selectedPlanHours || 200}
                     step="0.5"
                     placeholder="0"
                     value={formData.spentHours}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      const maxHours = selectedPlanHours || 200;
                       handleInputChange(
                         "spentHours",
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
+                        value > maxHours ? maxHours : value,
+                      );
+                    }}
                     className={errors.spentHours ? "border-destructive" : ""}
                   />
                   {errors.spentHours && (
@@ -343,6 +360,9 @@ export function CadetConfigDialog({
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
                     Количество часов, проведенных до внедрения системы
+                    {selectedPlanHours
+                      ? ` (максимум: ${selectedPlanHours})`
+                      : ""}
                   </p>
                 </div>
               </div>

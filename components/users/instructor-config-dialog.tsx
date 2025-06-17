@@ -12,8 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Car } from "lucide-react";
+import { Plus, Trash2, Car as CarIcon, Info } from "lucide-react";
 import { Car as ApiCar } from "@/lib/api/client";
+import { Spinner } from "@/components/ui/spinner";
+import { useGetInstructorCars } from "@/lib/api/hooks";
+import { ErrorState } from "@/components/ui/api-states";
+import { LicensePlate } from "@/components/ui/license-plate";
 
 export interface CarData extends ApiCar {
   id: string;
@@ -28,7 +32,7 @@ interface InstructorConfigDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: InstructorConfigData) => void;
   instructorName: string;
-  initialData?: Partial<InstructorConfigData>;
+  instructorId: string;
 }
 
 export function InstructorConfigDialog({
@@ -36,10 +40,10 @@ export function InstructorConfigDialog({
   onOpenChange,
   onSubmit,
   instructorName,
-  initialData,
+  instructorId,
 }: InstructorConfigDialogProps) {
   const [cars, setCars] = useState<CarData[]>([]);
-  const [newCar, setNewCar] = useState<ApiCar>({
+  const [newCar, setNewCar] = useState<Omit<ApiCar, "id">>({
     model: "",
     plateNumber: "",
     color: "",
@@ -49,44 +53,45 @@ export function InstructorConfigDialog({
     general?: string;
   }>({});
 
-  // Reset form when dialog opens/closes or initialData changes
+  const {
+    data: initialCars,
+    loading,
+    error: fetchError,
+    refetch,
+  } = useGetInstructorCars(open ? instructorId : "");
+
   useEffect(() => {
-    if (open) {
-      setCars(initialData?.cars || []);
-      setNewCar({ model: "", plateNumber: "", color: "" });
-      setErrors({});
+    if (initialCars) {
+      setCars(
+        initialCars.map((car) => ({
+          ...car,
+          id: car.id || `car-${Date.now()}-${Math.random()}`,
+        })),
+      );
     }
-  }, [open, initialData]);
+  }, [initialCars]);
 
   const validateNewCar = (): boolean => {
     const newErrors: { model?: string; plateNumber?: string; color?: string } =
       {};
+    if (!newCar.model.trim()) newErrors.model = "Модель обязательна";
+    if (!newCar.plateNumber.trim()) newErrors.plateNumber = "Номер обязателен";
+    if (!newCar.color.trim()) newErrors.color = "Цвет обязателен";
 
-    if (!newCar.model.trim()) {
-      newErrors.model = "Модель обязательна";
-    }
-
-    if (!newCar.plateNumber.trim()) {
-      newErrors.plateNumber = "Номер обязателен";
-    } else if (
-      !/^[А-Я]{1}\d{3}[А-Я]{2}\d{2,3}$/.test(
-        newCar.plateNumber.toUpperCase().replace(/\s/g, ""),
-      )
+    // Validate plate number format
+    const platePattern = /^[А-ЯA-Z]\d{1,3}[А-ЯA-Z]{2}\d{2,3}(RUS)?$/i;
+    if (
+      newCar.plateNumber.trim() &&
+      !platePattern.test(newCar.plateNumber.trim())
     ) {
-      // Basic Russian license plate validation (simplified)
       newErrors.plateNumber = "Некорректный формат номера";
     }
 
-    if (!newCar.color.trim()) {
-      newErrors.color = "Цвет обязателен";
-    }
-
-    // Check for duplicate plate numbers
-    const duplicatePlate = cars.some(
-      (car) =>
-        car.plateNumber.toLowerCase() === newCar.plateNumber.toLowerCase(),
-    );
-    if (duplicatePlate) {
+    if (
+      cars.some(
+        (c) => c.plateNumber.toLowerCase() === newCar.plateNumber.toLowerCase(),
+      )
+    ) {
       newErrors.plateNumber = "Автомобиль с таким номером уже добавлен";
     }
 
@@ -95,18 +100,8 @@ export function InstructorConfigDialog({
   };
 
   const handleAddCar = () => {
-    if (!validateNewCar()) {
-      return;
-    }
-
-    const carToAdd: CarData = {
-      id: Date.now().toString(),
-      model: newCar.model.trim(),
-      plateNumber: newCar.plateNumber.trim().toUpperCase(),
-      color: newCar.color.trim(),
-    };
-
-    setCars((prev) => [...prev, carToAdd]);
+    if (!validateNewCar()) return;
+    setCars((prev) => [...prev, { ...newCar, id: `temp-${Date.now()}` }]);
     setNewCar({ model: "", plateNumber: "", color: "" });
     setErrors({});
   };
@@ -117,26 +112,25 @@ export function InstructorConfigDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (cars.length === 0) {
       setErrors({ general: "Добавьте хотя бы один автомобиль" });
       return;
     }
-
     onSubmit({ cars });
     onOpenChange(false);
   };
 
-  const handleInputChange = (field: keyof ApiCar, value: string) => {
+  const handleInputChange = (
+    field: keyof Omit<ApiCar, "id">,
+    value: string,
+  ) => {
     setNewCar((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors.newCar?.[field]) {
       setErrors((prev) => ({
         ...prev,
         newCar: { ...prev.newCar, [field]: undefined },
       }));
     }
-    // Clear general error when user makes changes
     if (errors.general) {
       setErrors((prev) => ({ ...prev, general: undefined }));
     }
@@ -144,148 +138,167 @@ export function InstructorConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Настройка инструктора: {instructorName}</DialogTitle>
-          </DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Настройка инструктора: {instructorName}</DialogTitle>
+        </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            {/* General Error */}
-            {errors.general && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                {errors.general}
-              </div>
-            )}
-
-            {/* Add New Car Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Добавить автомобиль</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="model">Модель *</Label>
-                  <Input
-                    id="model"
-                    placeholder="например, Lada Vesta"
-                    value={newCar.model}
-                    onChange={(e) => handleInputChange("model", e.target.value)}
-                    className={errors.newCar?.model ? "border-destructive" : ""}
-                  />
-                  {errors.newCar?.model && (
-                    <p className="text-xs text-destructive mt-1">
-                      {errors.newCar.model}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="plateNumber">Номер *</Label>
-                  <Input
-                    id="plateNumber"
-                    placeholder="А123БВ77"
-                    value={newCar.plateNumber}
-                    onChange={(e) =>
-                      handleInputChange("plateNumber", e.target.value)
-                    }
-                    className={
-                      errors.newCar?.plateNumber ? "border-destructive" : ""
-                    }
-                  />
-                  {errors.newCar?.plateNumber && (
-                    <p className="text-xs text-destructive mt-1">
-                      {errors.newCar.plateNumber}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="color">Цвет *</Label>
-                  <Input
-                    id="color"
-                    placeholder="например, белый"
-                    value={newCar.color}
-                    onChange={(e) => handleInputChange("color", e.target.value)}
-                    className={errors.newCar?.color ? "border-destructive" : ""}
-                  />
-                  {errors.newCar?.color && (
-                    <p className="text-xs text-destructive mt-1">
-                      {errors.newCar.color}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                onClick={handleAddCar}
-                className="w-full"
-                variant="outline"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Добавить автомобиль
-              </Button>
-            </div>
-
-            {/* Cars List Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">
-                Автомобили инструктора ({cars.length})
-              </h3>
-
-              {cars.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Car className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Автомобили не добавлены</p>
-                  <p className="text-sm">Добавьте хотя бы один автомобиль</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {cars.map((car) => (
-                    <Card key={car.id} className="shadow-sm">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <Car className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium">{car.model}</h4>
-                              <div className="flex gap-4 text-sm text-muted-foreground">
-                                <span>№ {car.plateNumber}</span>
-                                <span>Цвет: {car.color}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveCar(car.id)}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : fetchError ? (
+          <div className="flex-1">
+            <ErrorState error={fetchError} onRetry={refetch} />
+          </div>
+        ) : (
+          <form
+            onSubmit={handleSubmit}
+            className="flex-1 flex flex-col overflow-hidden"
+          >
+            <div className="overflow-y-auto pr-2 space-y-6 py-4">
+              {errors.general && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {errors.general}
                 </div>
               )}
-            </div>
-          </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Отмена
-            </Button>
-            <Button type="submit">Сохранить настройки</Button>
-          </DialogFooter>
-        </form>
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Добавить автомобиль</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="model">Модель *</Label>
+                    <Input
+                      id="model"
+                      value={newCar.model}
+                      onChange={(e) =>
+                        handleInputChange("model", e.target.value)
+                      }
+                      className={
+                        errors.newCar?.model ? "border-destructive" : ""
+                      }
+                    />
+                    {errors.newCar?.model && (
+                      <p className="text-xs text-destructive mt-1">
+                        {errors.newCar.model}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="plateNumber">Номер *</Label>
+                      <Input
+                        id="plateNumber"
+                        value={newCar.plateNumber}
+                        onChange={(e) =>
+                          handleInputChange("plateNumber", e.target.value)
+                        }
+                        className={
+                          errors.newCar?.plateNumber ? "border-destructive" : ""
+                        }
+                        placeholder="A123BC45RUS"
+                      />
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Info className="h-3 w-3" />
+                        <span>Формат: A123BC45RUS или A123BC45</span>
+                      </div>
+                    </div>
+                    {errors.newCar?.plateNumber && (
+                      <p className="text-xs text-destructive mt-1">
+                        {errors.newCar.plateNumber}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="color">Цвет *</Label>
+                    <Input
+                      id="color"
+                      value={newCar.color}
+                      onChange={(e) =>
+                        handleInputChange("color", e.target.value)
+                      }
+                      className={
+                        errors.newCar?.color ? "border-destructive" : ""
+                      }
+                    />
+                    {errors.newCar?.color && (
+                      <p className="text-xs text-destructive mt-1">
+                        {errors.newCar.color}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleAddCar}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Добавить автомобиль
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">
+                  Автомобили инструктора ({cars.length})
+                </h3>
+                {cars.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Автомобили не добавлены</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {cars.map((car) => (
+                      <Card key={car.id} className="shadow-sm">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <CarIcon className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium">{car.model}</h4>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <LicensePlate
+                                    plateNumber={car.plateNumber}
+                                    variant="compact"
+                                  />
+                                  <span className="text-muted-foreground">
+                                    Цвет: {car.color}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveCar(car.id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="mt-auto pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Отмена
+              </Button>
+              <Button type="submit">Сохранить настройки</Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

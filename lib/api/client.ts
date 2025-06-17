@@ -66,6 +66,7 @@ export interface ChatMessage {
 }
 
 export interface Car {
+  id: string;
   model: string;
   plateNumber: string;
   color: string;
@@ -215,6 +216,14 @@ export const instructorsApi = {
     return apiRequest<Instructor[]>("/api/instructors");
   },
 
+  async getCadets(id: string): Promise<ApiResponse<User[]>> {
+    return apiRequest<User[]>(`/api/instructors/${id}/cadets`);
+  },
+
+  async getCars(id: string): Promise<ApiResponse<Car[]>> {
+    return apiRequest<Car[]>(`/api/instructors/${id}/config`);
+  },
+
   async configureCars(id: string, cars: Car[]): Promise<ApiResponse> {
     return apiRequest(`/api/instructors/${id}/config`, {
       method: "POST",
@@ -241,6 +250,29 @@ export const cadetsApi = {
 export const plansApi = {
   async getAll(): Promise<ApiResponse<Plan[]>> {
     return apiRequest<Plan[]>("/api/plans");
+  },
+
+  async create(planData: Omit<Plan, "id">): Promise<ApiResponse<Plan>> {
+    return apiRequest<Plan>("/api/plans", {
+      method: "POST",
+      body: JSON.stringify(planData),
+    });
+  },
+
+  async update(
+    id: string,
+    planData: Partial<Omit<Plan, "id">>,
+  ): Promise<ApiResponse<Plan>> {
+    return apiRequest<Plan>(`/api/plans/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(planData),
+    });
+  },
+
+  async delete(id: string): Promise<ApiResponse> {
+    return apiRequest(`/api/plans/${id}`, {
+      method: "DELETE",
+    });
   },
 };
 

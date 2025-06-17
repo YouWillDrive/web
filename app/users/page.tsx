@@ -30,10 +30,10 @@ import {
   InstructorConfigDialog,
   InstructorConfigData,
 } from "@/components/users/instructor-config-dialog";
+import { InstructorCadetsDialog } from "@/components/users/instructor-cadets-dialog";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { useState, useMemo } from "react";
 import { User as ApiUser } from "@/lib/api/client";
-import { Spinner } from "@/components/ui/spinner";
 import { DataState } from "@/components/ui/api-states";
 import {
   useUsers,
@@ -347,9 +347,17 @@ export default function UsersPage() {
                                 </span>
                               </div>
 
-                              <h3 className="font-semibold text-base leading-tight truncate">
-                                {user.surname} {user.name}
-                              </h3>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-base leading-tight truncate">
+                                  {user.surname} {user.name}
+                                </h3>
+                                {user.role === "instructor" && (
+                                  <InstructorCadetsDialog
+                                    instructorId={user.id}
+                                    instructorName={`${user.surname} ${user.name}`}
+                                  />
+                                )}
+                              </div>
 
                               {user.patronymic && (
                                 <p className="text-sm text-muted-foreground truncate">
@@ -451,6 +459,7 @@ export default function UsersPage() {
               onOpenChange={setInstructorConfigDialogOpen}
               onSubmit={handleInstructorConfigSubmit}
               instructorName={`${configuringUser.name} ${configuringUser.surname}`}
+              instructorId={configuringUser.id}
             />
           )}
 

@@ -99,7 +99,7 @@ export default function Home() {
               <Link href="/chats" className="w-full">
                 <Button
                   className="w-full h-32 text-xl font-medium flex flex-col gap-3 items-center justify-center shadow-md hover:shadow-lg transition-all"
-                  variant="default"
+                  variant="outline"
                   size="lg"
                 >
                   <MessageSquare className="h-10 w-10" />
@@ -110,7 +110,7 @@ export default function Home() {
               <Link href="/calendar" className="w-full">
                 <Button
                   className="w-full h-32 text-xl font-medium flex flex-col gap-3 items-center justify-center shadow-md hover:shadow-lg transition-all"
-                  variant="secondary"
+                  variant="outline"
                   size="lg"
                 >
                   <Calendar className="h-10 w-10" />
