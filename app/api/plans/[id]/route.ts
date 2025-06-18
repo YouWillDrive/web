@@ -8,7 +8,7 @@ import { RecordId } from "surrealdb";
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await connect();
@@ -40,7 +40,7 @@ export async function PUT(
 
     return NextResponse.json(updatedPlan);
   } catch (error) {
-    console.error(`PUT Plan ${params.id} Error:`, error);
+    console.error(`PUT Plan ${(await params).id} Error:`, error);
     return NextResponse.json(
       { error: "Не удалось обновить план оплаты" },
       { status: 500 },
@@ -55,7 +55,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await connect();
@@ -94,7 +94,7 @@ export async function DELETE(
       message: "План оплаты успешно удален",
     });
   } catch (error) {
-    console.error(`DELETE Plan ${params.id} Error:`, error);
+    console.error(`DELETE Plan ${(await params).id} Error:`, error);
     return NextResponse.json(
       { error: "Не удалось удалить план оплаты" },
       { status: 500 },

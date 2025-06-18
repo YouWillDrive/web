@@ -10,7 +10,7 @@ import { RecordId } from "surrealdb";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await connect();
@@ -35,7 +35,7 @@ export async function GET(
 
     return NextResponse.json(cadetsResult || []);
   } catch (error) {
-    console.error(`GET Instructor Cadets ${params.id} Error:`, error);
+    console.error(`GET Instructor Cadets ${(await params).id} Error:`, error);
     return NextResponse.json(
       { error: "Не удалось получить список курсантов инструктора" },
       { status: 500 },

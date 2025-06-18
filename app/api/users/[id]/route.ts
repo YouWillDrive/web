@@ -8,7 +8,7 @@ import { RecordId } from "surrealdb";
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
@@ -38,7 +38,7 @@ export async function PUT(
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error(`PUT User ${params.id} Error:`, error);
+    console.error(`PUT User ${(await params).id} Error:`, error);
     return NextResponse.json(
       { error: "Не удалось обновить пользователя" },
       { status: 500 },
@@ -52,7 +52,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
@@ -111,7 +111,7 @@ export async function DELETE(
       message: "Пользователь успешно удален",
     });
   } catch (error) {
-    console.error(`DELETE User ${params.id} Error:`, error);
+    console.error(`DELETE User ${(await params).id} Error:`, error);
     return NextResponse.json(
       { error: "Не удалось удалить пользователя" },
       { status: 500 },
