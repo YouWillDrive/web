@@ -42,7 +42,14 @@ export function PlanDialog({
     price: 0,
   });
 
-  const [errors, setErrors] = useState<Partial<PlanFormData>>({});
+  const [errors, setErrors] = useState<
+    Record<keyof PlanFormData, string | undefined>
+  >({
+    name: undefined,
+    practice_hours: undefined,
+    theory_hours: undefined,
+    price: undefined,
+  });
   const [hourPrice, setHourPrice] = useState<number>(0);
 
   // Reset form when dialog opens/closes or initialData changes
@@ -63,7 +70,12 @@ export function PlanDialog({
           price: 0,
         });
       }
-      setErrors({});
+      setErrors({
+        name: undefined,
+        practice_hours: undefined,
+        theory_hours: undefined,
+        price: undefined,
+      });
     }
   }, [open, initialData]);
 
@@ -77,18 +89,25 @@ export function PlanDialog({
   }, [formData.price, formData.practice_hours]);
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<PlanFormData> = {};
+    const newErrors: Record<keyof PlanFormData, string | undefined> = {
+      name: undefined,
+      practice_hours: undefined,
+      theory_hours: undefined,
+      price: undefined,
+    };
 
     if (!formData.name.trim()) {
       newErrors.name = "Название плана обязательно";
     }
 
     if (formData.practice_hours <= 0) {
-      newErrors.practice_hours = "Количество часов практики должно быть больше 0";
+      newErrors.practice_hours =
+        "Количество часов практики должно быть больше 0";
     }
 
     if (formData.theory_hours < 0) {
-      newErrors.theory_hours = "Количество часов теории не может быть отрицательным";
+      newErrors.theory_hours =
+        "Количество часов теории не может быть отрицательным";
     }
 
     if (formData.price <= 0) {
@@ -112,7 +131,7 @@ export function PlanDialog({
 
   const handleInputChange = (
     field: keyof PlanFormData,
-    value: string | number
+    value: string | number,
   ) => {
     // Convert string values to number for numeric fields
     if (["practice_hours", "theory_hours", "price"].includes(field)) {
@@ -221,7 +240,9 @@ export function PlanDialog({
                   className={errors.price ? "border-destructive" : ""}
                 />
                 {errors.price && (
-                  <p className="text-xs text-destructive mt-1">{errors.price}</p>
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.price}
+                  </p>
                 )}
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
                   <span>Полная стоимость курса</span>
