@@ -14,7 +14,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, AlertCircle, ShieldAlert } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  AlertCircle,
+  ShieldAlert,
+  Smartphone,
+  Download,
+} from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/contexts/auth-context";
@@ -27,6 +34,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showAppDownload, setShowAppDownload] = useState(false);
   const [errors, setErrors] = useState<{
     phone?: string;
     password?: string;
@@ -78,7 +86,21 @@ export default function LoginPage() {
         // Redirect will happen via useEffect when user state updates
         router.push("/");
       } else {
-        setErrors({ general: result.error || "Ошибка входа в систему" });
+        // Check if error suggests user is non-admin (instructor/student)
+        if (
+          result.error?.toLowerCase().includes("доступ") ||
+          result.error?.toLowerCase().includes("права") ||
+          result.error?.toLowerCase().includes("роль")
+        ) {
+          setErrors({
+            general:
+              "У вас нет прав администратора для доступа к веб-системе. Пожалуйста, используйте мобильное приложение.",
+          });
+          // Show app download suggestion
+          setShowAppDownload(true);
+        } else {
+          setErrors({ general: result.error || "Ошибка входа в систему" });
+        }
       }
     } catch {
       setErrors({ general: "Ошибка подключения к серверу" });
@@ -215,16 +237,56 @@ export default function LoginPage() {
                   t("loginButton")
                 )}
               </Button>
+
+              <div className="mt-4 relative">
+                <div className="relative z-10">
+                  <a
+                    href="/app-debug.apk"
+                    download
+                    className="inline-block w-full"
+                    onClick={(e) => e.currentTarget.blur()}
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={`w-full h-11 font-medium flex items-center justify-center gap-2 transition-all duration-300 ${
+                        showAppDownload
+                          ? "bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 hover:from-blue-200 hover:to-cyan-200 dark:hover:from-blue-900/60 dark:hover:to-cyan-900/60 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+                          : "bg-background hover:bg-muted/80"
+                      }`}
+                    >
+                      {showAppDownload ? (
+                        <Smartphone className="h-5 w-5" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      Скачать мобильное приложение
+                    </Button>
+                  </a>
+                </div>
+              </div>
             </form>
           </CardContent>
           <CardFooter>
-            <div className="w-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-3">
-              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <div
+              className={`w-full ${
+                showAppDownload
+                  ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
+                  : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+              } border rounded-md p-3 transition-colors duration-300`}
+            >
+              <div
+                className={`flex items-center gap-2 ${
+                  showAppDownload
+                    ? "text-blue-800 dark:text-blue-300"
+                    : "text-amber-800 dark:text-amber-300"
+                }`}
+              >
                 <ShieldAlert className="h-4 w-4 flex-shrink-0" />
-                <p className="text-sm">
-                  Только администраторы имеют доступ к системе. Если у вас нет
-                  прав администратора, вы увидите сообщение об ограниченном
-                  доступе.
+                <p className="text-sm transition-opacity duration-300">
+                  {showAppDownload
+                    ? "Если вы инструктор или курсант, пожалуйста, используйте наше мобильное приложение для доступа ко всем функциям системы."
+                    : "Только администраторы имеют полный доступ к веб-системе. Инструкторам и курсантам необходимо использовать мобильное приложение для удобной работы с системой."}
                 </p>
               </div>
             </div>
