@@ -115,7 +115,7 @@ export function PlanDialog({
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return !Object.values(newErrors).some((error) => error !== undefined);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
